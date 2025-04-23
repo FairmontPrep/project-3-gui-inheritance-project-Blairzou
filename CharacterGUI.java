@@ -5,110 +5,163 @@ import java.io.File;
 import java.io.IOException;
 import javax.imageio.ImageIO;
 
-// 抽象类：角色基础层
-abstract class CharacterLayer extends JPanel {
-    private BufferedImage faceImage, eyesImage, clothesImage;
+// Base abstract layer class
+abstract class CharacterLayer {
+    protected BufferedImage image;
+    protected String description = "";
 
-    public CharacterLayer() {
-        loadImages();
+    protected abstract void loadImage();
+
+    public BufferedImage getImage() {
+        return image;
     }
 
-    protected abstract void loadImages();
-
-    protected void setBaseImages(String facePath, String eyesPath, String clothesPath) {
-        try {
-            faceImage = ImageIO.read(new File(facePath));
-            eyesImage = ImageIO.read(new File(eyesPath));
-            clothesImage = ImageIO.read(new File(clothesPath));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    public String getDescription() {
+        return description;
     }
 
-    protected BufferedImage getFaceImage() { return faceImage; }
-    protected BufferedImage getEyesImage() { return eyesImage; }
-    protected BufferedImage getClothesImage() { return clothesImage; }
+    protected void drawScaledImage(Graphics g, BufferedImage img, Dimension panelSize) {
+        if (img == null) return;
 
-    @Override
-    protected void paintComponent(Graphics g) {
-        super.paintComponent(g);
-        drawScaledImage(g, getFaceImage());
-        drawScaledImage(g, getEyesImage());
-        drawScaledImage(g, getClothesImage());
-    }
-
-    // 计算缩放后的图片大小，并绘制
-    protected void drawScaledImage(Graphics g, BufferedImage image) {
-        if (image == null) return;
-
-        int panelWidth = getWidth();
-        int panelHeight = getHeight();
-        int imgWidth = image.getWidth();
-        int imgHeight = image.getHeight();
-
-        // 计算缩放比例，确保图片不会超过窗口，并保持原比例
+        int panelWidth = panelSize.width;
+        int panelHeight = panelSize.height;
+        int imgWidth = img.getWidth();
+        int imgHeight = img.getHeight();
         double scale = Math.min((double) panelWidth / imgWidth, (double) panelHeight / imgHeight);
 
         int newWidth = (int) (imgWidth * scale);
         int newHeight = (int) (imgHeight * scale);
-
-        // 居中绘制图片
         int x = (panelWidth - newWidth) / 2;
         int y = (panelHeight - newHeight) / 2;
 
-        g.drawImage(image, x, y, newWidth, newHeight, this);
+        g.drawImage(img, x, y, newWidth, newHeight, null);
     }
 }
 
-// 子类：添加头发（自动切换）
-class CharacterWithHair extends CharacterLayer {
-    private BufferedImage hairImage1, hairImage2;
-    private boolean toggleHair = true;
-
-    public CharacterWithHair() {
-        super();
-        startHairSwitching();
+class FaceLayer extends CharacterLayer {
+    public FaceLayer() {
+        loadImage();
     }
 
     @Override
-    protected void loadImages() {
-        setBaseImages("faces.png", "eyes.png", "clothes.png");
+    protected void loadImage() {
         try {
-            hairImage1 = ImageIO.read(new File("hairv1.png"));
-            hairImage2 = ImageIO.read(new File("hairv2.png"));
+            image = ImageIO.read(new File("faces.png"));
+            description = "Face: Smiling";
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
+}
 
-    private void startHairSwitching() {
-        Timer timer = new Timer(1000, e -> { // 每秒切换一次头发
-            toggleHair = !toggleHair;
-            repaint();
-        });
-        timer.start();
+class EyesLayer extends CharacterLayer {
+    public EyesLayer() {
+        loadImage();
+    }
+
+    @Override
+    protected void loadImage() {
+        try {
+            image = ImageIO.read(new File("eyes.png"));
+            description = "Eyes: Green";
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+class ClothesLayer extends CharacterLayer {
+    public ClothesLayer() {
+        loadImage();
+    }
+
+    @Override
+    protected void loadImage() {
+        try {
+            image = ImageIO.read(new File("clothes.png"));
+            description = "Clothes: Hoodie";
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+class HairLayer extends CharacterLayer {
+    private BufferedImage hair1, hair2;
+
+    public HairLayer() {
+        loadImage();
+    }
+
+    @Override
+    protected void loadImage() {
+        try {
+            hair1 = ImageIO.read(new File("hairv1.png"));
+            hair2 = ImageIO.read(new File("hairv2.png"));
+            boolean useHair1 = Math.random() < 0.5;
+            image = useHair1 ? hair1 : hair2;
+            description = useHair1 ? "Hair: Spiky" : "Hair: Wavy";
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+class FullCharacterPanel extends JPanel {
+    private FaceLayer face;
+    private EyesLayer eyes;
+    private ClothesLayer clothes;
+    private HairLayer hair;
+
+    public FullCharacterPanel() {
+        face = new FaceLayer();
+        eyes = new EyesLayer();
+        clothes = new ClothesLayer();
+        hair = new HairLayer();
+
+        Timer t = new Timer(100, e -> repaint());
+        t.start();
     }
 
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
-        drawScaledImage(g, toggleHair ? hairImage1 : hairImage2);
+        Dimension size = getSize();
+
+        face.drawScaledImage(g, face.getImage(), size);
+        eyes.drawScaledImage(g, eyes.getImage(), size);
+        clothes.drawScaledImage(g, clothes.getImage(), size);
+        hair.drawScaledImage(g, hair.getImage(), size);
+
+        String fullDescription = face.getDescription() + " | " +
+                                 eyes.getDescription() + " | " +
+                                 clothes.getDescription() + " | " +
+                                 hair.getDescription();
+
+        g.setColor(Color.BLACK);
+        g.setFont(new Font("Arial", Font.BOLD, 40));
+        g.drawString(fullDescription, 50, 3200);
+    }
+
+    @Override
+    public Dimension getPreferredSize() {
+        return new Dimension(2550, 3300);
     }
 }
 
-//
 public class CharacterGUI {
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             JFrame frame = new JFrame("角色显示");
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            frame.setSize(2550,3300) ;  // 设置初始窗口大小
-            frame.setMinimumSize(new Dimension(300, 300)); // 设置最小窗口大小
+            frame.setSize(2550, 3300);
+            frame.setMinimumSize(new Dimension(400, 400));
 
-            CharacterLayer character = new CharacterWithHair();
-            frame.add(character);
+            FullCharacterPanel panel = new FullCharacterPanel();
+            frame.add(panel);
+            frame.pack();
+            frame.setLocationRelativeTo(null);
             frame.setVisible(true);
         });
     }
 }
-
